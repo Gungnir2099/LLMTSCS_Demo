@@ -253,7 +253,7 @@ function newStart() {
                          * 30000 ms 延时时间。 多少秒之后才开始显示内容
                          * 3600000 ms 总时间。时间一到 infobox 中不显示内容。 为空
                          * */
-                        infoAppend(responseData, 0,360000);
+                        infoAppend(responseData, 1000,360000);
                         uploadFile(null, null, function () {
                             $.ajax({
                                 url: textFileUrl,
