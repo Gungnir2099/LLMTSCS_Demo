@@ -96,7 +96,7 @@ let selectedDOM = document.getElementById("selected-entity");
 //     infoDOM.innerText += "- " + msg + "\n";
 // }
 
-function infoAppend(msg, delay, executionTime) {
+function infoAppend(msg) {
     let msgArray;
     try {
         msgArray = JSON.parse(msg);
@@ -108,30 +108,20 @@ function infoAppend(msg, delay, executionTime) {
         console.error("如果被打印，则：responses文件 不为 string 类型");
         return;
     }
+
     let currentMsgIndex = 0;
-    let displayMessageTimeout;
 
     function displayMessage() {
         if (currentMsgIndex >= msgArray.length) {
-            currentMsgIndex = 0;
+            currentMsgIndex = 0;  // 当达到数组末尾时重置索引
         }
-        infoDOM.innerText = msgArray[currentMsgIndex];
+        infoDOM.innerText = msgArray[currentMsgIndex];  // 显示当前消息
         currentMsgIndex++;
-        displayMessageTimeout = setTimeout(displayMessage, 2050);  // 控制每条显示时间
+        setTimeout(displayMessage, 2050);  // 设置下一条消息的显示时间
     }
 
-    if (delay) {
-        setTimeout(function () {
-            displayMessage();
-            if (executionTime) {
-                setTimeout(function () {
-                    clearTimeout(displayMessageTimeout);
-                }, executionTime);
-            }
-        }, delay);
-    } else {
-        displayMessage();
-    }
+    // 设置初始延时30秒
+    setTimeout(displayMessage, 0);
 }
 
 
@@ -165,71 +155,83 @@ let showChart = false;
 let chartConainterDOM = document.getElementById("chart-container");
 
 
-let after_update = function () {
+let after_update = async function () {
     ready = false;
     document.getElementById("guide").classList.add("d-none");
     hideCanvas();
-    try {
-        console.log('roadnetData[0]=====11111', roadnetData[0]);
-        simulation = JSON.parse(roadnetData[0]);
-    } catch (e) {
-        loading = false;
-        return;
-    }
-    try {
-        console.log('replayData[0]=====22222', replayData[0]);
-        logs = replayData[0].split('\n');
-        logs.pop();
-    } catch (e) {
-        console.error(e);
-        loading = false;
-        return;
-    }
 
-    totalStep = logs.length;
-    console.log(totalStep);
-    console.log(showChart);
-    if (showChart) {
-        chartConainterDOM.classList.remove("d-none");
-        let chart_lines = chartData[0].split('\n');
-        if (chart_lines.length == 0) {
-            showChart = false;
+    await new Promise((resolve, reject) => {
+        try {
+            console.log('roadnetData[0]=====11111', roadnetData[0]);
+            simulation = JSON.parse(roadnetData[0]);
+            resolve();
+        } catch (e) {
+            loading = false;
+            reject(e);
         }
-        chartLog = [];
-        for (let i = 0; i < totalStep; ++i) {
-            step_data = chart_lines[i + 1].split(/[ \t]+/);
-            chartLog.push([]);
-            for (let j = 0; j < step_data.length; ++j) {
-                chartLog[i].push(parseFloat(step_data[j]));
+    });
+
+    await new Promise((resolve, reject) => {
+        try {
+            console.log('replayData[0]=====22222', replayData[0]);
+            logs = replayData[0].split('\n');
+            logs.pop();
+            totalStep = logs.length;
+            console.log(totalStep);
+            console.log(showChart);
+            if (showChart) {
+                chartConainterDOM.classList.remove("d-none");
+                let chart_lines = chartData[0].split('\n');
+                if (chart_lines.length == 0) {
+                    showChart = false;
+                }
+                chartLog = [];
+                for (let i = 0; i < totalStep; ++i) {
+                    step_data = chart_lines[i + 1].split(/[ \t]+/);
+                    chartLog.push([]);
+                    for (let j = 0; j < step_data.length; ++j) {
+                        chartLog[i].push(parseFloat(step_data[j]));
+                    }
+                }
+                chart.init(chart_lines[0], chartLog[0].length, totalStep);
+            } else {
+                chartConainterDOM.classList.add("d-none");
             }
+            resolve();
+        } catch (e) {
+            console.error(e);
+            loading = false;
+            reject(e);
         }
-        chart.init(chart_lines[0], chartLog[0].length, totalStep);
-    } else {
-        chartConainterDOM.classList.add("d-none");
-    }
+    });
 
     controls.paused = false;
     cnt = 0;
     // debugMode = document.getElementById("debug-mode").checked;
     debugMode = false;
-    setTimeout(function () {
-        try {
-            drawRoadnet();
-        } catch (e) {
-            console.error(e.message);
-            loading = false;
-            return;
-        }
-        ready = true;
-        loading = false;
-    }, 200);
 
+    await new Promise((resolve, reject) => {
+        setTimeout(function () {
+            try {
+                drawRoadnet();
+                resolve();
+            } catch (e) {
+                console.error(e.message);
+                loading = false;
+                reject(e);
+            }
+        }, 200);
+    });
+
+    ready = true;
+    loading = false;
+    infoAppend(afterObject);
 };
 
 
 let jsonObject = {}
 let textObject = {}
-
+let afterObject = {}
 function newStart() {
     let jsonFileUrl = 'readFile/roadnet_1_1.json-flow_main_stream.json-LLMTLCSPPOFineTuneAFT-llama_traj_lora_13b-4_Phases-roadnetLogFile.json';
     let textFileUrl = 'readFile/roadnet_1_1.json-flow_main_stream.json-LLMTLCSPPOFineTuneAFT-llama_traj_lora_13b-4_Phases-replayLogFile.txt';
@@ -241,19 +243,17 @@ function newStart() {
         success: function (jsonData) {
             roadnetData.push(jsonData);
             jsonObject = {
-                name: 'readFile/roadnet_1_1.json-flow_main_stream.json-LLMTLCSPPOFineTuneAFT-llama_traj_lora_13b-4_Phases-roadnetLogFile.json'
+                name: 'roadnet_1_1.json-flow_main_stream.json-LLMTLCSPPOFineTuneAFT-llama_traj_lora_13b-4_Phases-roadnetLogFile.json'
             }
             uploadFile(jsonData, jsonObject, function () {
                 $.ajax({
                     url: responsesUrl,
                     dataType: 'text',
                     success: function (responseData) {
+                        afterObject = responseData
                         /**
                          * responseData 读取文件参数
-                         * 30000 ms 延时时间。 多少秒之后才开始显示内容
-                         * 3600000 ms 总时间。时间一到 infobox 中不显示内容。 为空
                          * */
-                        infoAppend(responseData, 1000,360000);
                         uploadFile(null, null, function () {
                             $.ajax({
                                 url: textFileUrl,
