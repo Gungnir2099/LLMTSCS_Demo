@@ -117,7 +117,7 @@ function infoAppend(msg) {
         }
         infoDOM.innerText = msgArray[currentMsgIndex];  // 显示当前消息
         currentMsgIndex++;
-        setTimeout(displayMessage, 2000);  // 设置下一条消息的显示时间
+        setTimeout(displayMessage, 2025);  // 设置下一条消息的显示时间
     }
 
     // 设置初始延时30秒
